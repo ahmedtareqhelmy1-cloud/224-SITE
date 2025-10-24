@@ -1,0 +1,21 @@
+# Dependencies and builds
+node_modules/
+dist/
+.vercel/
+*.log
+
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Misc
+*.local
+*.tmp

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "p001",
+    "name": "Dark Denim Low Waist Baggy",
+    "price": 1200,
+    "salePrice": 950,
+    "isOnSale": true,
+    "isSoldOut": false,
+    "image": "/images/denim.png",
+    "sizeOptions": ["S", "M", "L", "XL"],
+    "colorOptions": ["Black", "Dark Blue", "Gray"],
+    "description": "Premium low waist denim with a relaxed fit."
+  }
+]

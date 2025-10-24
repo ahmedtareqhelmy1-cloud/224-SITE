@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to products collection
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'mohamedtareq543219@gmail.com';
+    }
+    
+    // Allow users to read and write their own orders
+    match /orders/{orderId} {
+      allow read: if request.auth != null && (
+        request.auth.token.email == 'mohamedtareq543219@gmail.com' || 
+        request.auth.uid == resource.data.userId
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.token.email == 'mohamedtareq543219@gmail.com';
+    }
+    
+    // Allow users to read and write their own custom designs
+    match /custom-designs/{designId} {
+      allow read: if request.auth != null && (
+        request.auth.token.email == 'mohamedtareq543219@gmail.com' || 
+        request.auth.uid == resource.data.userId
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.token.email == 'mohamedtareq543219@gmail.com';
+    }
+    
+    // Allow users to manage their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
