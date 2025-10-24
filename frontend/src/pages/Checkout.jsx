@@ -15,6 +15,12 @@ export default function Checkout(){
   const [busy, setBusy] = useState(false)
   const [buyerEmail, setBuyerEmail] = useState('')
   const [lastOrderId, setLastOrderId] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [city, setCity] = useState('')
+  const [addressLine, setAddressLine] = useState('')
+  const [notes, setNotes] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('COD')
 
   const INSTAPAY_HANDLE = 'kook717@instapay'
   const INSTAPAY_LINK = (import.meta.env.VITE_INSTAPAY_LINK || 'https://ipn.eg/S/kook717/instapay/1WxX7I')
@@ -23,7 +29,9 @@ export default function Checkout(){
 
   async function placeOrder(paymentMethod='COD'){
     setBusy(true)
-    const order = { items, total, payment: paymentMethod, status:'Pending' }
+    const order = { items, total, payment: paymentMethod, status:'Pending', shipping: {
+      fullName, phone, city, addressLine, notes
+    }}
 
     try {
       const created = await firebaseFunctions.createOrder({ items, total, payment: paymentMethod, status: 'pending', buyerEmail });
@@ -41,45 +49,109 @@ export default function Checkout(){
   }
 
   return (
-    <div className="container py-5">
-      <h2>Checkout</h2>
-      <div className="row">
-        <div className="col-md-6">
-          <h4>Billing & Shipping</h4>
-          <p>Autofill from profile (Clerk) will be added later.</p>
-          <div className="mt-3">
-            <label className="form-label">Email for confirmation</label>
-            <input className="form-control" type="email" placeholder="you@example.com" value={buyerEmail} onChange={e=>setBuyerEmail(e.target.value)} />
+    <div className="container py-6">
+      {/* Steps */}
+      <div className="mb-6 flex items-center gap-3 text-sm">
+        <div className="px-3 py-1 rounded-full bg-purple-600 text-white">1</div>
+        <div className="text-white/90">Details</div>
+        <div className="h-px flex-1 bg-white/10 mx-2" />
+        <div className="px-3 py-1 rounded-full bg-purple-600 text-white">2</div>
+        <div className="text-white/90">Payment</div>
+        <div className="h-px flex-1 bg-white/10 mx-2" />
+        <div className="px-3 py-1 rounded-full bg-white/10 text-white">3</div>
+        <div className="text-white/70">Review</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: form */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
+            <h3 className="text-lg font-semibold text-white mb-4">Contact & Shipping</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="form-label text-white/80">Email</label>
+                <input className="form-control" type="email" placeholder="you@example.com" value={buyerEmail} onChange={e=>setBuyerEmail(e.target.value)} required />
+              </div>
+              <div>
+                <label className="form-label text-white/80">Full name</label>
+                <input className="form-control" type="text" placeholder="Your full name" value={fullName} onChange={e=>setFullName(e.target.value)} required />
+              </div>
+              <div>
+                <label className="form-label text-white/80">Phone</label>
+                <input className="form-control" type="tel" placeholder="01xxxxxxxxx" value={phone} onChange={e=>setPhone(e.target.value)} required />
+              </div>
+              <div>
+                <label className="form-label text-white/80">City</label>
+                <input className="form-control" type="text" placeholder="Alexandria" value={city} onChange={e=>setCity(e.target.value)} required />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="form-label text-white/80">Address</label>
+                <input className="form-control" type="text" placeholder="Street, building, apartment" value={addressLine} onChange={e=>setAddressLine(e.target.value)} required />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="form-label text-white/80">Notes (optional)</label>
+                <textarea className="form-control" rows={3} placeholder="Delivery notes" value={notes} onChange={e=>setNotes(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
+            <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <button type="button" onClick={()=>setPaymentMethod('COD')} className={`p-4 rounded-lg border ${paymentMethod==='COD'?'border-purple-500 bg-purple-500/10':'border-white/10 bg-white/5'} text-white text-left`}>Cash on Delivery
+                <div className="text-xs text-white/60">Pay cash upon delivery</div>
+              </button>
+              <button type="button" onClick={()=>setPaymentMethod('Instapay')} className={`p-4 rounded-lg border ${paymentMethod==='Instapay'?'border-purple-500 bg-purple-500/10':'border-white/10 bg-white/5'} text-white text-left`}>InstaPay
+                <div className="text-xs text-white/60">Handle: {INSTAPAY_HANDLE}</div>
+              </button>
+              <button type="button" onClick={()=>setPaymentMethod('Paymob')} className={`p-4 rounded-lg border ${paymentMethod==='Paymob'?'border-purple-500 bg-purple-500/10':'border-white/10 bg-white/5'} text-white text-left`}>Paymob
+                <div className="text-xs text-white/60">Coming soon</div>
+              </button>
+            </div>
+            {paymentMethod==='Instapay' && (
+              <div className="mt-3">
+                <a className="btn btn-primary" href={INSTAPAY_LINK} target="_blank" rel="noreferrer">Open InstaPay Link</a>
+              </div>
+            )}
           </div>
         </div>
-        <div className="col-md-6">
-          <h4>Order Summary</h4>
-          <p>Subtotal: {subtotal} EGP</p>
-          <p>Shipping: 50 EGP</p>
-          <p><strong>Total: {total} EGP</strong></p>
 
-          {msg && <div className={`alert ${msg.includes('Order placed')? 'alert-success':'alert-info'} mt-3`}>{msg}</div>}
-          {lastOrderId && (
-            <div className="mt-2 small text-muted">Save this Order ID for reference: <strong>{lastOrderId}</strong></div>
-          )}
+        {/* Right: sticky summary */}
+        <aside className="lg:col-span-1">
+          <div className="sticky top-24 rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
+            <h3 className="text-lg font-semibold text-white mb-4">Order Summary</h3>
+            <div className="space-y-3 mb-3 max-h-56 overflow-auto pr-1">
+              {items.map(i=> (
+                <div key={i.id} className="flex items-center gap-3">
+                  <img src={i.image || (Array.isArray(i.images)? i.images[0] : '')} alt={i.name} className="w-12 h-12 rounded object-cover border border-white/10" />
+                  <div className="flex-1 text-white/90">
+                    <div className="text-sm">{i.name}</div>
+                    <div className="text-xs text-white/60">Qty {i.quantity||1}</div>
+                  </div>
+                  <div className="text-white/90 text-sm">{((i.salePrice||i.price)* (i.quantity||1)).toLocaleString()} EGP</div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/10 pt-3 space-y-1 text-sm text-white/80">
+              <div className="flex justify-between"><span>Subtotal</span><span>{subtotal.toLocaleString()} EGP</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>50 EGP</span></div>
+              <div className="flex justify-between font-semibold text-white"><span>Total</span><span>{total.toLocaleString()} EGP</span></div>
+            </div>
 
-          <div className="mt-4">
-            <button className="btn btn-success" disabled={busy} onClick={()=>placeOrder('COD')}>Place Order (Cash on Delivery)</button>
-            <button className="btn btn-warning ms-2" disabled={busy} onClick={()=>placeOrder('Paymob')}>Pay with Paymob (stub)</button>
+            {msg && <div className={`alert ${msg.includes('Order placed')? 'alert-success':'alert-info'} mt-3`}>{msg}</div>}
+            {lastOrderId && (
+              <div className="mt-2 small text-white/70">Order ID: <strong>{lastOrderId}</strong></div>
+            )}
+
             <button
-              className="btn btn-primary ms-2"
-              disabled={busy}
-              onClick={async ()=>{
-                // create order marked as Instapay pending, then open payment link
-                await placeOrder('Instapay')
-                window.open(INSTAPAY_LINK, '_blank', 'noopener,noreferrer')
-              }}
+              className="btn btn-success w-full mt-4"
+              disabled={busy || !buyerEmail || !fullName || !phone || !city || !addressLine}
+              onClick={()=>placeOrder(paymentMethod)}
             >
-              Pay via InstaPay
+              {busy? 'Placing Order...' : 'Place Order'}
             </button>
-            <div className="form-text mt-2">InstaPay handle: <strong>{INSTAPAY_HANDLE}</strong></div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   )
