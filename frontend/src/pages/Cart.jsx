@@ -10,7 +10,7 @@ export default function Cart() {
   const subtotal = items.reduce((total, item) => 
     total + (item.salePrice || item.price) * item.quantity, 0)
 
-  const shipping = items.length > 0 ? 50 : 0
+  const shipping = items.length > 0 ? (subtotal >= 3000 ? 0 : 50) : 0
   const total = subtotal + shipping
 
   const handleRemove = (id) => {

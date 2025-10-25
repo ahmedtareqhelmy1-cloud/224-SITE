@@ -67,9 +67,31 @@ export default function Tshirts(){
 
   const loadItems = async ()=>{
     try{
-      const { firebaseFunctions } = await import('../../config/firebase');
+      const { firebaseFunctions, storage } = await import('../../config/firebase');
+      const { ref, getDownloadURL } = await import('firebase/storage');
       const res = await firebaseFunctions.getProducts({ category: 'men-tshirts', pageSize: 48 });
-      setItems(res.products || []);
+      const list = res.products || [];
+      const isImage = (v)=> typeof v === 'string' && (/^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v));
+      const needsResolving = (v)=> typeof v === 'string' && !/^https?:\/\//i.test(v) && !/^\//.test(v) && /\.(png|jpe?g|webp|svg)$/i.test(v);
+      const normalized = await Promise.all(list.map(async (p)=>{
+        try{
+          let images = p.images;
+          if(Array.isArray(images) && images.some(needsResolving)){
+            images = await Promise.all(images.map(async (x)=>{
+              if(needsResolving(x)){
+                try{ return await getDownloadURL(ref(storage, `products/${p.id}/${x}`)); } catch{ return x; }
+              }
+              return x;
+            }));
+          }
+          const imgsArr = Array.isArray(images) ? images.filter(isImage) : [];
+          const imgsObj = (p.images && typeof p.images === 'object' && !Array.isArray(p.images)) ? Object.values(p.images).filter(isImage) : [];
+          const candidates = [p.image, p.imageUrl, p.thumbnail, ...imgsArr, ...imgsObj].filter(isImage);
+          const primary = candidates[0] || null;
+          return { ...p, images, imageUrl: p.imageUrl || primary || null, thumbnail: p.thumbnail || primary || null };
+        }catch{ return p; }
+      }));
+      setItems(normalized);
     }catch(err){
       console.error('Failed to load tshirts', err);
       setError(err.message || 'Failed to load');
@@ -292,31 +314,15 @@ export default function Tshirts(){
                     <button
                       disabled={adding || !newProd.title || !newProd.price || !(newProd.images?.length)}
                       onClick={async ()=>{
-                        let tempId = null;
                         try{
                           if(!newProd.title || !newProd.price){ setAddMsg('Please fill title and price.'); return; }
-                          setAdding(true); setAddMsg('Uploading product...');
+                          setAdding(true); setUploadPct(0); setAddMsg('Uploading product...');
                           const { firebaseFunctions } = await import('../../config/firebase');
                           const sizesArr = Object.keys(newProd.sizes).filter(k=>newProd.sizes[k]);
                           const colorsArr = Object.keys(newProd.colors).filter(k=>newProd.colors[k]);
                           const compressedArr = await Promise.all((newProd.images||[]).map(f=>compressImage(f)));
-                          // Upload to backend proxy to avoid Storage CORS
-                          const fd = new FormData();
-                          (compressedArr||[]).forEach((file,i)=> fd.append('images', file, file.name || `image_${i}.jpg`));
-                          const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
-                          let upJson;
-                          const upRes = await fetch(`${apiBase}/api/upload`, { method: 'POST', body: fd });
-                          if(!upRes.ok){
-                            const txt = await upRes.text().catch(()=> '');
-                            throw new Error(`Upload failed (${upRes.status}): ${txt || upRes.statusText}`);
-                          }
-                          upJson = await upRes.json();
-                          const urls = Array.isArray(upJson.urls) ? upJson.urls : [];
 
-                          // Optimistic UI: use final URLs
-                          tempId = 'tmp-'+Date.now();
-                          const tempItem = {
-                            id: tempId,
+                          const created = await firebaseFunctions.adminCreateProduct({
                             name: newProd.title,
                             description: newProd.description || '',
                             price: Number(newProd.price)||0,
@@ -327,34 +333,19 @@ export default function Tshirts(){
                             gender,
                             sizes: sizesArr,
                             colors: colorsArr,
-                            images: urls
-                          };
-                          setItems(prev=> [tempItem, ...prev]);
-                          await firebaseFunctions.adminCreateProduct({
-                            name: newProd.title,
-                            description: newProd.description || '',
-                            price: Number(newProd.price)||0,
-                            category,
-                            stock: Number(newProd.stock)||0,
-                            inStock: Number(newProd.stock)>0,
-                            discount: Number(discount)||0,
-                            gender,
-                            sizes: sizesArr,
-                            colors: colorsArr,
-                            images: urls
-                          });
+                            images: compressedArr
+                          }, { onProgress: (p)=> setUploadPct(p) });
+
                           setAddMsg('Product added');
                           await loadItems();
                           setTimeout(()=>{ setIsAddOpen(false); setAddMsg(''); setNewProd({title:'',price:'',description:'',stock:'',sizes:{XS:false,S:false,M:false,L:false,XL:false},colors:{Black:false,White:false,Navy:false,Gray:false},images:[]}); setGender('Unisex'); setCategory('men-tshirts'); setDiscount(''); setSelectedIdx(0); }, 700);
                         }catch(err){
                           console.error('Add product failed:', err);
                           setAddMsg(err?.message || 'Add failed');
-                          if(tempId){ setItems(prev=> prev.filter(p=>p.id !== tempId)); }
-                        }
-                        finally{ setAdding(false); }
+                        } finally { setAdding(false); }
                       }}
                       className="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white"
-                    >{adding? 'Adding...' : 'Add Product'}</button>
+                    >{adding? `Adding... ${uploadPct||0}%` : 'Add Product'}</button>
                   </div>
                 </div>
               </div>

@@ -10,8 +10,9 @@ export default function Checkout(){
   const dispatch = useDispatch()
   const items = useSelector(state => state.cart?.items || [])
   const subtotal = useMemo(()=> items.reduce((t,i)=> t + (i.salePrice || i.price) * (i.quantity||1), 0), [items])
+  const shippingCost = useMemo(()=> (items.length ? (subtotal >= 3000 ? 0 : 50) : 0), [items, subtotal])
   const [msg, setMsg] = useState('')
-  const [total, setTotal] = useState(subtotal + 50)
+  const [total, setTotal] = useState(subtotal + (items.length ? (subtotal >= 3000 ? 0 : 50) : 0))
   const [busy, setBusy] = useState(false)
   const [buyerEmail, setBuyerEmail] = useState('')
   const [lastOrderId, setLastOrderId] = useState('')
@@ -31,7 +32,7 @@ export default function Checkout(){
     setBusy(true)
     const order = { items, total, payment: paymentMethod, status:'Pending', shipping: {
       fullName, phone, city, addressLine, notes
-    }}
+    }, shippingCost }
 
     try {
       const created = await firebaseFunctions.createOrder({ items, total, payment: paymentMethod, status: 'pending', buyerEmail });
@@ -121,21 +122,35 @@ export default function Checkout(){
           <div className="sticky top-24 rounded-xl border border-white/10 bg-white/5 backdrop-blur p-5">
             <h3 className="text-lg font-semibold text-white mb-4">Order Summary</h3>
             <div className="space-y-3 mb-3 max-h-56 overflow-auto pr-1">
-              {items.map(i=> (
-                <div key={i.id} className="flex items-center gap-3">
-                  <img src={i.image || (Array.isArray(i.images)? i.images[0] : '')} alt={i.name} className="w-12 h-12 rounded object-cover border border-white/10" />
-                  <div className="flex-1 text-white/90">
-                    <div className="text-sm">{i.name}</div>
-                    <div className="text-xs text-white/60">Qty {i.quantity||1}</div>
+              {items.map(i=> {
+                const isImage = (v)=> typeof v === 'string' && (
+                  /^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v)
+                );
+                const arrCandidates = Array.isArray(i.images) ? i.images.filter(isImage) : [];
+                const objCandidates = (i.images && typeof i.images === 'object') ? Object.values(i.images).filter(isImage) : [];
+                const candidates = [i.thumbnail, i.image, ...arrCandidates, ...objCandidates].filter(isImage);
+                const thumb = candidates[0] || '/assets/Logo.svg';
+                return (
+                  <div key={i.id} className="flex items-center gap-3">
+                    <img
+                      src={thumb}
+                      alt={i.name || 'Product'}
+                      className="w-12 h-12 rounded object-cover border border-white/10"
+                      onError={(e)=>{ e.currentTarget.src = '/assets/Logo.svg'; }}
+                    />
+                    <div className="flex-1 text-white/90">
+                      <div className="text-sm">{i.name}</div>
+                      <div className="text-xs text-white/60">Qty {i.quantity||1}</div>
+                    </div>
+                    <div className="text-white/90 text-sm">{((i.salePrice||i.price)* (i.quantity||1)).toLocaleString()} EGP</div>
                   </div>
-                  <div className="text-white/90 text-sm">{((i.salePrice||i.price)* (i.quantity||1)).toLocaleString()} EGP</div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div className="border-t border-white/10 pt-3 space-y-1 text-sm text-white/80">
               <div className="flex justify-between"><span>Subtotal</span><span>{subtotal.toLocaleString()} EGP</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>50 EGP</span></div>
-              <div className="flex justify-between font-semibold text-white"><span>Total</span><span>{total.toLocaleString()} EGP</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>{shippingCost.toLocaleString()} EGP</span></div>
+              <div className="flex justify-between font-semibold text-white"><span>Total</span><span>{(subtotal+shippingCost).toLocaleString()} EGP</span></div>
             </div>
 
             {msg && <div className={`alert ${msg.includes('Order placed')? 'alert-success':'alert-info'} mt-3`}>{msg}</div>}

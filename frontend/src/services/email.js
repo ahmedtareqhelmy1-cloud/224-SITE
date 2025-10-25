@@ -5,24 +5,36 @@ export function sendOrderEmails(order, buyerEmail){
   const tpl = import.meta.env.VITE_EMAILJS_TEMPLATE_ORDER || import.meta.env.VITE_EMAILJS_TEMPLATE_ID || import.meta.env.VITE_EMAILJS_TEMPLATE_ORDER_FALLBACK;
   const pub = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
+  // Normalize to absolute URL if needed
+  const toAbsolute = (u)=>{
+    if(!u) return ''
+    if(/^https?:\/\//i.test(u)) return u
+    if(u.startsWith('/')) return `${location.origin}${u}`
+    return `${location.origin}/${u}`
+  }
+
   // Map cart items to the template's expected structure
   const orders = (order.items || []).map(i => ({
     name: i.name || i.title || 'Item',
     units: i.quantity || 1,
     price: ((i.salePrice || i.price || 0) * (i.quantity || 1)).toFixed(2),
-    image: i.image || (Array.isArray(i.images) ? i.images[0] : '') || ''
+    image: toAbsolute(i.image || (Array.isArray(i.images) ? i.images[0] : '') || '')
   }));
 
-  const shipping = 50;
+  const shipping = typeof order.shippingCost === 'number'
+    ? order.shippingCost
+    : ((orders.reduce((t, x)=> t + parseFloat(x.price||0), 0) >= 3000) ? 0 : 50);
   const tax = 0;
-  const logo = import.meta.env.VITE_BRAND_LOGO_URL || `${location.origin}/logo.png`;
+  const logo = (import.meta.env.VITE_BRAND_LOGO_URL && /^https?:\/\//i.test(import.meta.env.VITE_BRAND_LOGO_URL))
+    ? import.meta.env.VITE_BRAND_LOGO_URL
+    : toAbsolute('logo.png');
   const base = {
     order_id: order.id,
     // List data for repeating section
     orders,
     // Cost breakdown object
     cost: {
-      shipping: shipping.toFixed(2),
+      shipping: Number(shipping).toFixed(2),
       tax: tax.toFixed(2),
       total: Number(order.total ?? 0).toFixed(2)
     },

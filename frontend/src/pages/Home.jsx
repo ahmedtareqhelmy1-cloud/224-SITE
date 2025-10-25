@@ -150,7 +150,7 @@ export const Home = () => {
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                   style={{ textShadow: '0 0 8px rgba(59,130,246,0.25)' }}
                 >
-                  On orders over 1000 EGP
+                  On orders over 3000 EGP
                 </motion.p>
               </motion.div>
             </div>

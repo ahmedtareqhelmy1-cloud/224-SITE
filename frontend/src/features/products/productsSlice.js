@@ -52,29 +52,79 @@ export const fetchProducts = createAsyncThunk(
         constraints.push(where('category', '==', category));
       }
 
-      if (filters.minPrice) {
-        constraints.push(where('price', '>=', Number(filters.minPrice)));
-      }
+      const hasMin = filters.minPrice != null && filters.minPrice !== '';
+      const hasMax = filters.maxPrice != null && filters.maxPrice !== '';
+      if (hasMin) constraints.push(where('price', '>=', Number(filters.minPrice)));
+      if (hasMax) constraints.push(where('price', '<=', Number(filters.maxPrice)));
 
-      if (filters.maxPrice) {
-        constraints.push(where('maxPrice', '<=', Number(filters.maxPrice)));
+      // Firestore requires ordering by the same field used in range filters.
+      if (hasMin || hasMax) {
+        constraints.push(orderBy('price'));
+        constraints.push(orderBy('createdAt', 'desc'));
+      } else {
+        constraints.push(orderBy('createdAt', 'desc'));
       }
-
-      // Always add sorting by creation date and limit
-      constraints.push(orderBy('createdAt', 'desc'));
       constraints.push(limit(pageSize));
 
       const q = query(productsRef, ...constraints);
       const querySnapshot = await getDocs(q);
       
-      const products = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
+      const products = querySnapshot.docs.map(d => {
+        const data = d.data();
+        // Normalize image fields for rendering
+        const isImage = (v) => typeof v === 'string' && (/^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v));
+        const imgsArr = Array.isArray(data.images) ? data.images.filter(isImage) : [];
+        const imgsObj = (data.images && typeof data.images === 'object' && !Array.isArray(data.images)) ? Object.values(data.images).filter(isImage) : [];
+        const candidates = [data.image, data.imageUrl, data.thumbnail, ...imgsArr, ...imgsObj].filter(isImage);
+        const primaryImg = candidates[0] || null;
+        return {
+          id: d.id,
+          ...data,
+          imageUrl: data.imageUrl || primaryImg || null,
+          thumbnail: data.thumbnail || primaryImg || null,
+          createdAt: (data.createdAt && typeof data.createdAt?.toDate === 'function') ? data.createdAt.toDate() : (data.createdAt || null),
+          updatedAt: (data.updatedAt && typeof data.updatedAt?.toDate === 'function') ? data.updatedAt.toDate() : (data.updatedAt || null)
+        };
+      });
+
+      // Attempt to resolve any non-URL filenames to Firebase Storage download URLs
+      const needsResolving = (v) => typeof v === 'string' && !/^https?:\/\//i.test(v) && !/^\//.test(v) && /\.(png|jpe?g|webp|svg)$/i.test(v);
+      const resolved = await Promise.all(products.map(async (p) => {
+        try {
+          let images = p.images;
+          if (Array.isArray(images) && images.some(needsResolving)) {
+            const urls = await Promise.all(images.map(async (x) => {
+              if (needsResolving(x)) {
+                try {
+                  const r = ref(storage, `products/${p.id}/${x}`);
+                  return await getDownloadURL(r);
+                } catch {
+                  return x;
+                }
+              }
+              return x;
+            }));
+            images = urls;
+          }
+
+          let imageUrl = p.imageUrl;
+          if (!imageUrl) {
+            const filename = (Array.isArray(p.images) ? p.images.find(needsResolving) : null) || (typeof p.image === 'string' && needsResolving(p.image) ? p.image : null);
+            if (filename) {
+              try {
+                const r = ref(storage, `products/${p.id}/${filename}`);
+                imageUrl = await getDownloadURL(r);
+              } catch {}
+            }
+          }
+          const thumbnail = p.thumbnail || imageUrl || (Array.isArray(images) ? images[0] : p.imageUrl) || p.thumbnail || null;
+          return { ...p, images, imageUrl: imageUrl || p.imageUrl || null, thumbnail };
+        } catch {
+          return p;
+        }
       }));
 
-      return products;
+      return resolved;
     } catch (error) {
       console.error('Error fetching products:', error);
       throw error;

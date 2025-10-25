@@ -188,12 +188,16 @@ export default function ProductDetails(){
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={()=>{
+                const currentImageUrl = Array.isArray(p.images)
+                  ? p.images[Number(view)||0]
+                  : (p.images?.[view] || (gallery && gallery[0]) || p.image);
                 const payload = {
                   ...p,
                   quantity: qty,
                   selectedSize: size || (p.sizes?.[0] || p.sizeOptions?.[0] || 'M'),
                   selectedColor: color || (p.colors?.[0] || p.colorOptions?.[0] || 'Black'),
-                  price: discountedPrice
+                  price: discountedPrice,
+                  thumbnail: currentImageUrl
                 }
                 dispatch(addToCart(payload))
               }}

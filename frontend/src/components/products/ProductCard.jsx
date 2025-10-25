@@ -14,17 +14,43 @@ const ProductCard = ({ product }) => {
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || (product.colorOptions?.[0] || '#000'));
 
   const { id, name, price, images, discount, stock, image } = product;
-  // Resolve image robustly (array, object, single string) with fallbacks
-  let resolvedImage = undefined;
-  if (Array.isArray(images) && images.length) {
-    resolvedImage = images[Number(currentImage) || 0] || images[0];
-  } else if (images && typeof images === 'object') {
-    resolvedImage = images[currentImage] || images.front || Object.values(images)[0];
-  } else if (typeof images === 'string') {
-    resolvedImage = images;
-  }
-  const fallbackImage = image || '/placeholder.png';
-  const displayImage = resolvedImage || fallbackImage;
+  // Resolve image robustly (array, object, single string) with prioritized candidates
+  const isImage = (v) => typeof v === 'string' && (
+    /^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v)
+  );
+  const arrCandidates = Array.isArray(images) ? images.filter(isImage) : [];
+  const objCandidates = (images && typeof images === 'object') ? Object.values(images).filter(isImage) : [];
+  const candidates = [
+    image,
+    product.imageUrl,
+    product.thumbnail,
+    ...arrCandidates,
+    ...objCandidates
+  ].filter(isImage);
+  const [primary, ...rest] = candidates.length ? candidates : ['/assets/Logo.svg'];
+  const [displayImage, setDisplayImage] = useState(primary);
+  const [fallbackQueue, setFallbackQueue] = useState(rest);
+
+  // Debug: surface chosen candidates to help diagnose missing images
+  React.useEffect(()=>{
+    try { console.debug('ProductCard image candidates', { id, name, candidates }); } catch {}
+  }, [id]);
+
+  // When product or its images update (async fetch), recompute candidates and reset
+  React.useEffect(()=>{
+    const newArrCandidates = Array.isArray(images) ? images.filter(isImage) : [];
+    const newObjCandidates = (images && typeof images === 'object') ? Object.values(images).filter(isImage) : [];
+    const newCandidates = [
+      image,
+      product.imageUrl,
+      product.thumbnail,
+      ...newArrCandidates,
+      ...newObjCandidates
+    ].filter(isImage);
+    const [p, ...r] = newCandidates.length ? newCandidates : ['/assets/Logo.svg'];
+    setDisplayImage(p);
+    setFallbackQueue(r);
+  }, [image, images, product.imageUrl, product.thumbnail]);
 
   const imageKeys = Array.isArray(images)
     ? images.map((_, idx) => String(idx))
@@ -35,7 +61,7 @@ const ProductCard = ({ product }) => {
   const handleAddToCart = (e) => {
     e.preventDefault();
     if (isOutOfStock) return;
-    const payload = { ...product, quantity: 1, selectedSize, selectedColor };
+    const payload = { ...product, quantity: 1, selectedSize, selectedColor, thumbnail: displayImage };
     dispatch(addToCart(payload));
     setShowSuccessAnimation(true);
     setTimeout(() => setShowSuccessAnimation(false), 1500);
@@ -69,8 +95,15 @@ const ProductCard = ({ product }) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                onError={(e) => {
-                  e.target.src = '/placeholder.png';
+                onError={() => {
+                  try { console.warn('Image failed, falling back', { id, failed: displayImage, remaining: fallbackQueue }); } catch {}
+                  if (fallbackQueue.length > 0) {
+                    const [next, ...restQ] = fallbackQueue;
+                    setDisplayImage(next);
+                    setFallbackQueue(restQ);
+                  } else {
+                    setDisplayImage('/assets/Logo.svg');
+                  }
                 }}
               />
             </AnimatePresence>

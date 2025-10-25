@@ -4,6 +4,7 @@ const morgan = require('morgan')
 const { v4: uuidv4 } = require('uuid')
 const fs = require('fs')
 const path = require('path')
+require('dotenv').config()
 
 const app = express()
 app.use(cors())
@@ -128,6 +129,68 @@ app.post('/api/contact', upload.single('file'), (req, res) => {
   orders.push({ type: 'contact', ...msg })
   fs.writeFileSync(ordersFile, JSON.stringify(orders, null, 2))
   res.json({ ok: true })
+})
+
+// Send order confirmation via Mailjet (no logo, product image only)
+app.post('/api/send-order', async (req, res) => {
+  try {
+    const { order, buyerEmail } = req.body || {}
+    if (!order) return res.status(400).json({ error: 'Missing order' })
+
+    const MJ_APIKEY_PUBLIC = process.env.MAILJET_API_KEY
+    const MJ_APIKEY_PRIVATE = process.env.MAILJET_API_SECRET
+    const TEMPLATE_ID = Number(process.env.MAILJET_TEMPLATE_ID || 7429596)
+    const SENDER = process.env.MAILJET_SENDER || 'no-reply@your-domain.com'
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'mohamedtareq543219@gmail.com'
+
+    if (!MJ_APIKEY_PUBLIC || !MJ_APIKEY_PRIVATE) {
+      return res.status(501).json({ error: 'Mailjet keys not configured' })
+    }
+
+    const firstItem = Array.isArray(order?.items) && order.items.length ? order.items[0] : null
+    const isImage = (v) => typeof v === 'string' && (/^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v))
+    const arrCandidates = firstItem && Array.isArray(firstItem.images) ? firstItem.images.filter(isImage) : []
+    const objCandidates = firstItem && firstItem.images && typeof firstItem.images === 'object' && !Array.isArray(firstItem.images)
+      ? Object.values(firstItem.images).filter(isImage)
+      : []
+    const productImage = [firstItem?.thumbnail, firstItem?.imageUrl, firstItem?.image, ...arrCandidates, ...objCandidates].filter(isImage)[0] || ''
+
+    const payload = {
+      Messages: [
+        {
+          From: { Email: SENDER, Name: 'Order Confirmation' },
+          To: [{ Email: buyerEmail || ADMIN_EMAIL }],
+          Cc: [{ Email: ADMIN_EMAIL }],
+          TemplateID: TEMPLATE_ID,
+          TemplateLanguage: true,
+          Variables: {
+            ...(order || {}),
+            logo_url: '',
+            product_image: productImage
+          }
+        }
+      ]
+    }
+
+    const auth = Buffer.from(`${MJ_APIKEY_PUBLIC}:${MJ_APIKEY_PRIVATE}`).toString('base64')
+    const r = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) {
+      console.error('Mailjet error', data)
+      return res.status(r.status).json({ error: 'Mailjet send failed', details: data })
+    }
+    return res.status(200).json({ ok: true, data })
+  } catch (e) {
+    console.error('Mailjet request failed', e)
+    return res.status(500).json({ error: 'Server error', details: String(e) })
+  }
 })
 
 app.post('/api/paymob',(req,res)=>{
