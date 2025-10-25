@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -13,44 +13,104 @@ const ProductCard = ({ product }) => {
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || 'M');
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || (product.colorOptions?.[0] || '#000'));
 
-  const { id, name, price, images, discount, stock, image } = product;
-  // Resolve image robustly (array, object, single string) with prioritized candidates
-  const isImage = (v) => typeof v === 'string' && (
-    /^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v)
-  );
-  const arrCandidates = Array.isArray(images) ? images.filter(isImage) : [];
-  const objCandidates = (images && typeof images === 'object') ? Object.values(images).filter(isImage) : [];
-  const candidates = [
-    image,
-    product.imageUrl,
-    product.thumbnail,
-    ...arrCandidates,
-    ...objCandidates
-  ].filter(isImage);
-  const [primary, ...rest] = candidates.length ? candidates : ['/assets/Logo.svg'];
-  const [displayImage, setDisplayImage] = useState(primary);
-  const [fallbackQueue, setFallbackQueue] = useState(rest);
+  const { id, name, price, images, discount, stock, image, imageUrl, thumbnail } = product;
+  
+  // Helper to check if a value is a valid image URL or path
+  const isImage = (v) => {
+    if (!v) return false;
+    const str = String(v).trim();
+    
+    // Check for common image extensions regardless of path format
+    const hasImageExtension = /\.(png|jpe?g|webp|svg|gif|bmp|avif)$/i.test(str);
+    
+    // Check for data URLs, absolute URLs, or relative paths
+    const isValidPath = 
+      str.startsWith('http') || 
+      str.startsWith('https') || 
+      str.startsWith('data:image') ||
+      str.startsWith('/') ||
+      str.startsWith('./') ||
+      str.startsWith('../') ||
+      hasImageExtension;
+    
+    return hasImageExtension || isValidPath;
+  };
 
-  // Debug: surface chosen candidates to help diagnose missing images
-  React.useEffect(()=>{
-    try { console.debug('ProductCard image candidates', { id, name, candidates }); } catch {}
-  }, [id]);
+  // Helper to ensure the image URL is properly formatted
+  const formatImageUrl = (url) => {
+    if (!url) return null;
+    
+    const str = String(url).trim();
+    
+    // If it's already a full URL or data URL, return as is
+    if (str.startsWith('http') || str.startsWith('data:image')) {
+      return str;
+    }
+    
+    // If it's a relative path starting with /, assume it's from the public folder
+    if (str.startsWith('/')) {
+      return str;
+    }
+    
+    // For other relative paths, assume they're in the public/images folder
+    // Remove any leading ./ or ../
+    const cleanPath = str.replace(/^\.?\/+/, '');
+    return `/images/${cleanPath}`;
+  };
 
-  // When product or its images update (async fetch), recompute candidates and reset
-  React.useEffect(()=>{
-    const newArrCandidates = Array.isArray(images) ? images.filter(isImage) : [];
-    const newObjCandidates = (images && typeof images === 'object') ? Object.values(images).filter(isImage) : [];
-    const newCandidates = [
+  // Get all possible image candidates from the product
+  const getImageCandidates = () => {
+    const candidates = [];
+    
+    // Add direct image properties first (highest priority)
+    const potentialImages = [
       image,
-      product.imageUrl,
-      product.thumbnail,
-      ...newArrCandidates,
-      ...newObjCandidates
-    ].filter(isImage);
-    const [p, ...r] = newCandidates.length ? newCandidates : ['/assets/Logo.svg'];
-    setDisplayImage(p);
-    setFallbackQueue(r);
-  }, [image, images, product.imageUrl, product.thumbnail]);
+      imageUrl,
+      thumbnail,
+      ...(Array.isArray(images) ? images : []),
+      ...(images && typeof images === 'object' ? Object.values(images) : [])
+    ];
+    
+    // Process all potential images and add valid ones
+    potentialImages.forEach(img => {
+      if (!img) return;
+      
+      // Handle both single images and arrays of images
+      const processSingleImage = (imgUrl) => {
+        if (!isImage(imgUrl)) return;
+        const formattedUrl = formatImageUrl(imgUrl);
+        if (formattedUrl && !candidates.includes(formattedUrl)) {
+          candidates.push(formattedUrl);
+        }
+      };
+      
+      if (Array.isArray(img)) {
+        img.forEach(processSingleImage);
+      } else {
+        processSingleImage(img);
+      }
+    });
+    
+    // Add a default fallback image if no valid images found
+    return candidates.length > 0 ? candidates : ['/assets/Logo.svg'];
+  };
+  
+  const [displayImage, setDisplayImage] = useState('');
+  const [fallbackQueue, setFallbackQueue] = useState([]);
+  
+  // Update image state when product changes
+  useEffect(() => {
+    const candidates = getImageCandidates();
+    setDisplayImage(candidates[0] || '');
+    setFallbackQueue(candidates.slice(1));
+  }, [product]);
+
+  // Debug: Log image loading state
+  useEffect(() => {
+    if (!displayImage && fallbackQueue.length === 0) {
+      console.warn('No valid images found for product:', { id, name, image, imageUrl, thumbnail, images });
+    }
+  }, [displayImage, fallbackQueue, id, name, image, imageUrl, thumbnail, images]);
 
   const imageKeys = Array.isArray(images)
     ? images.map((_, idx) => String(idx))
@@ -95,8 +155,13 @@ const ProductCard = ({ product }) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                onError={() => {
-                  try { console.warn('Image failed, falling back', { id, failed: displayImage, remaining: fallbackQueue }); } catch {}
+                onError={(e) => {
+                  console.warn('Image failed to load, trying next fallback', { 
+                    id, 
+                    failed: displayImage, 
+                    remaining: fallbackQueue.length 
+                  });
+                  
                   if (fallbackQueue.length > 0) {
                     const [next, ...restQ] = fallbackQueue;
                     setDisplayImage(next);
