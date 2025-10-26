@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import Newsletter from './components/Newsletter';
 import OfferPopup from './components/OfferPopup';
 import { useAdminStatus } from './components/AdminCheck';
+import EntryOverlay from './components/EntryOverlay';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -26,6 +27,7 @@ export default function App() {
         <OfferPopup />
 
         <div className="relative">
+          <EntryOverlay />
           {/* live animated background */}
           <LiveBackground />
           <CustomCursor />

@@ -193,7 +193,32 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            {/* Auth removed from navbar */}
+            {/* Auth */}
+            {isClerkAvailable && authComponents && (
+              <>
+                {/* Load user state */}
+                <ClerkUserLoader />
+                {isSignedIn ? (
+                  <div className="flex items-center gap-3">
+                    <Link
+                      to="/profile"
+                      className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-200 dark:hover:text-blue-400"
+                    >
+                      Profile
+                    </Link>
+                    {authComponents.UserButton ? (
+                      <authComponents.UserButton afterSignOutUrl={import.meta.env.BASE_URL || '/'} />
+                    ) : null}
+                  </div>
+                ) : (
+                  authComponents.SignInButton ? (
+                    <authComponents.SignInButton mode="modal">
+                      <button className="px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">Sign In</button>
+                    </authComponents.SignInButton>
+                  ) : null
+                )}
+              </>
+            )}
           </div>
         </div>
 

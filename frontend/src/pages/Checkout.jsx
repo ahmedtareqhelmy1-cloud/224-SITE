@@ -10,7 +10,7 @@ export default function Checkout(){
   const dispatch = useDispatch()
   const items = useSelector(state => state.cart?.items || [])
   const subtotal = useMemo(()=> items.reduce((t,i)=> t + (i.salePrice || i.price) * (i.quantity||1), 0), [items])
-  const shippingCost = useMemo(()=> (items.length ? (subtotal >= 3000 ? 0 : 50) : 0), [items, subtotal])
+  const shippingCost = useMemo(()=> (items.length ? (subtotal >= 2999 ? 0 : 50) : 0), [items, subtotal])
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [buyerEmail, setBuyerEmail] = useState('')

@@ -475,6 +475,7 @@ export const saveUserProfile = async (user) => {
       displayName: user.displayName || '',
       bio: user.bio || '',
       email: user.email || '' ,
+      avatarUrl: user.avatarUrl || '',
       updatedAt: new Date().toISOString()
     }, { merge: true });
     return true;

@@ -150,7 +150,7 @@ export const Home = () => {
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                   style={{ textShadow: '0 0 8px rgba(59,130,246,0.25)' }}
                 >
-                  On orders over 3000 EGP
+                  On orders over 2999 EGP
                 </motion.p>
               </motion.div>
             </div>
@@ -176,7 +176,7 @@ export const Home = () => {
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
                   style={{ textShadow: '0 0 8px rgba(56,189,248,0.25)' }}
                 >
-                  30-day return policy
+                  14-day return policy
                 </motion.p>
               </motion.div>
             </div>
