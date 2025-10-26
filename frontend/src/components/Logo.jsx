@@ -77,11 +77,11 @@ const Logo = ({ onNavigate }) => {
 
   return (
     <div className="logo-wrap flex items-center" ref={logoRef} aria-label="224. brand logo" title="224.">
-      <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl border border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/80 shadow-sm backdrop-blur flex items-center justify-center overflow-hidden">
+      <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/80 shadow-sm backdrop-blur flex items-center justify-center overflow-hidden">
         <motion.img
           src={LogoMark}
           alt="224."
-          className="w-[90%] h-[90%] object-contain select-none filter brightness-0 dark:invert"
+          className="w-full h-full object-contain select-none filter brightness-0 dark:invert"
           style={{ WebkitUserDrag: 'none', filter: theme==='dark' ? 'invert(1) drop-shadow(0 0 1.5px rgba(255,255,255,0.35))' : 'brightness(0) drop-shadow(0 0 1.5px rgba(0,0,0,0.5))' }}
           animate={controls}
         />

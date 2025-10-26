@@ -4,7 +4,7 @@ import { clearCart as reduxClearCart } from '../features/cart/cartSlice'
 import { sendOrderEmails } from '../services/email'
 import { firebaseFunctions } from '../config/firebase'
 
-// AAST discount removed from Checkout — kept only in Product view
+// AAST discount moved here and applied at checkout when valid
 
 export default function Checkout(){
   const dispatch = useDispatch()
@@ -12,7 +12,6 @@ export default function Checkout(){
   const subtotal = useMemo(()=> items.reduce((t,i)=> t + (i.salePrice || i.price) * (i.quantity||1), 0), [items])
   const shippingCost = useMemo(()=> (items.length ? (subtotal >= 3000 ? 0 : 50) : 0), [items, subtotal])
   const [msg, setMsg] = useState('')
-  const [total, setTotal] = useState(subtotal + (items.length ? (subtotal >= 3000 ? 0 : 50) : 0))
   const [busy, setBusy] = useState(false)
   const [buyerEmail, setBuyerEmail] = useState('')
   const [lastOrderId, setLastOrderId] = useState('')
@@ -22,20 +21,27 @@ export default function Checkout(){
   const [addressLine, setAddressLine] = useState('')
   const [notes, setNotes] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('COD')
+  const [aastId, setAastId] = useState('')
+  const AAST_DISCOUNT_RATE = 0.20
+  // Allow arbitrary length; discount valid if any 9-digit substring starts with 19-25
+  const digitsOnly = (aastId || '').replace(/\D/g, '')
+  const aastValid = /(19|20|21|22|23|24|25)\d{7}/.test(digitsOnly)
+  const discount = aastValid ? Math.round(subtotal * AAST_DISCOUNT_RATE) : 0
+  const total = Math.max(0, subtotal + shippingCost - discount)
 
   const INSTAPAY_HANDLE = 'kook717@instapay'
   const INSTAPAY_LINK = (import.meta.env.VITE_INSTAPAY_LINK || 'https://ipn.eg/S/kook717/instapay/1WxX7I')
 
-  // No discount application here
+  // Discount applied via AAST ID above
 
   async function placeOrder(paymentMethod='COD'){
     setBusy(true)
     const order = { items, total, payment: paymentMethod, status:'Pending', shipping: {
       fullName, phone, city, addressLine, notes
-    }, shippingCost }
+    }, shippingCost, discount, meta: { aastId: aastValid ? aastId : undefined } }
 
     try {
-      const created = await firebaseFunctions.createOrder({ items, total, payment: paymentMethod, status: 'pending', buyerEmail });
+      const created = await firebaseFunctions.createOrder({ items, total, payment: paymentMethod, status: 'pending', buyerEmail, discount, meta: {aastId: aastValid ? aastId : undefined} });
       order.id = created.id;
       setLastOrderId(order.id);
       await sendOrderEmails(order, buyerEmail);
@@ -93,6 +99,25 @@ export default function Checkout(){
                 <label className="form-label text-white/80">Notes (optional)</label>
                 <textarea className="form-control" rows={3} placeholder="Delivery notes" value={notes} onChange={e=>setNotes(e.target.value)} />
               </div>
+              <div className="sm:col-span-2">
+                <label className="form-label text-white/80">AAST Student ID (optional)</label>
+                <input
+                  className="form-control"
+                  inputMode="numeric"
+                  placeholder="Enter your full student number (any length)"
+                  value={aastId}
+                  onChange={(e)=>{
+                    // Keep any length, digits only for evaluation but store what user typed
+                    const raw = e.target.value || ''
+                    setAastId(raw)
+                  }}
+                />
+                {aastId && (
+                  <div className={`mt-1 text-sm ${aastValid? 'text-green-400':'text-red-400'}`}>
+                    {aastValid ? 'AAST discount applied: 20% off subtotal' : 'Tip: Discount applies when your number contains a 9-digit part starting with 19-25'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -124,19 +149,20 @@ export default function Checkout(){
             <div className="space-y-3 mb-3 max-h-56 overflow-auto pr-1">
               {items.map(i=> {
                 const isImage = (v)=> typeof v === 'string' && (
-                  /^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v)
+                  /^(https?:\/\/|\/)\s*/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v)
                 );
                 const arrCandidates = Array.isArray(i.images) ? i.images.filter(isImage) : [];
                 const objCandidates = (i.images && typeof i.images === 'object') ? Object.values(i.images).filter(isImage) : [];
                 const candidates = [i.thumbnail, i.image, ...arrCandidates, ...objCandidates].filter(isImage);
-                const thumb = candidates[0] || '/assets/Logo.svg';
+                const base = import.meta.env.BASE_URL || '/';
+                const thumb = candidates[0] || `${base}assets/Logo.svg`;
                 return (
                   <div key={i.id} className="flex items-center gap-3">
                     <img
                       src={thumb}
                       alt={i.name || 'Product'}
                       className="w-12 h-12 rounded object-cover border border-white/10"
-                      onError={(e)=>{ e.currentTarget.src = '/assets/Logo.svg'; }}
+                      onError={(e)=>{ const base = import.meta.env.BASE_URL || '/'; e.currentTarget.src = `${base}assets/Logo.svg`; }}
                     />
                     <div className="flex-1 text-white/90">
                       <div className="text-sm">{i.name}</div>
@@ -149,8 +175,11 @@ export default function Checkout(){
             </div>
             <div className="border-t border-white/10 pt-3 space-y-1 text-sm text-white/80">
               <div className="flex justify-between"><span>Subtotal</span><span>{subtotal.toLocaleString()} EGP</span></div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-400"><span>AAST Discount (20%)</span><span>-{discount.toLocaleString()} EGP</span></div>
+              )}
               <div className="flex justify-between"><span>Shipping</span><span>{shippingCost.toLocaleString()} EGP</span></div>
-              <div className="flex justify-between font-semibold text-white"><span>Total</span><span>{(subtotal+shippingCost).toLocaleString()} EGP</span></div>
+              <div className="flex justify-between font-semibold text-white"><span>Total</span><span>{(total).toLocaleString()} EGP</span></div>
             </div>
 
             {msg && <div className={`alert ${msg.includes('Order placed')? 'alert-success':'alert-info'} mt-3`}>{msg}</div>}
@@ -171,3 +200,4 @@ export default function Checkout(){
     </div>
   )
 }
+

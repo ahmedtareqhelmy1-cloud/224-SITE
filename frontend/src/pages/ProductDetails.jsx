@@ -11,12 +11,9 @@ export default function ProductDetails(){
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
   const [qty, setQty] = useState(1)
-  const [aast, setAast] = useState('')
-  const [aastValid, setAastValid] = useState(false)
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const PAYMOB_URL = import.meta.env.VITE_PAYMOB_CHECKOUT_URL || 'https://paymob.xyz/cpG3CeBs/'
-  const AAST_DISCOUNT_RATE = Number(import.meta.env.VITE_AAST_DISCOUNT_RATE ?? 0.15)
 
   useEffect(()=>{
     (async ()=>{
@@ -46,12 +43,6 @@ export default function ProductDetails(){
     })()
   },[id])
 
-  // validate AAST reg number: 9 digits, starts with 19..25 (must be before any early return)
-  useEffect(()=>{
-    const ok = /^(19|20|21|22|23|24|25)\d{7}$/.test(aast.trim())
-    setAastValid(ok)
-  },[aast])
-
   // Build a stable list of {key,url} for gallery and color-image matching
   const galleryPairs = useMemo(()=>{
     if(!p) return []
@@ -70,8 +61,7 @@ export default function ProductDetails(){
   if(!p) return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">Loading…</div>
 
   const price = p.discount ? Math.round(p.price - (p.price * p.discount)/100) : p.price
-  const discountedPrice = aastValid ? Math.round(price * (1 - AAST_DISCOUNT_RATE)) : price
-  const total = discountedPrice * Math.max(1, qty)
+  const total = price * Math.max(1, qty)
 
 
   const handleBuyNow = ()=>{
@@ -94,7 +84,7 @@ export default function ProductDetails(){
                 animate={{opacity:1}}
                 exit={{opacity:0}}
                 transition={{duration:0.25}}
-                onError={(e)=>{ e.target.src = '/placeholder.png' }}
+                onError={(e)=>{ e.target.src = 'https://via.placeholder.com/600x600?text=Image' }}
               />
             </AnimatePresence>
             {p.isSoldOut && <div className="absolute top-3 left-3 bg-black text-white px-3 py-1 rounded">SOLD OUT</div>}
@@ -103,7 +93,7 @@ export default function ProductDetails(){
           <div className="mt-4 grid grid-cols-5 gap-3">
             {galleryPairs.map(({key,url})=> (
               <button key={key} onClick={()=>setView(key)} className={`border rounded-lg overflow-hidden transition-all ${view===key?'border-pink-600 ring-2 ring-pink-600/30':'border-gray-300 dark:border-gray-700 hover:border-pink-600/60'}`}>
-                <img src={url} alt={key} className="w-full h-24 object-cover" onError={(e)=>{ e.target.src='/placeholder.png' }} />
+                <img src={url} alt={key} className="w-full h-24 object-cover" onError={(e)=>{ e.target.src='https://via.placeholder.com/200x200?text=Image' }} />
               </button>
             ))}
           </div>
@@ -113,10 +103,9 @@ export default function ProductDetails(){
         <div className="lg:sticky top-24 self-start">
           <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">{p.name}</h1>
           <div className="mt-3 flex items-center gap-3">
-            <span className="text-2xl font-bold">{discountedPrice} EGP</span>
-            {aastValid && <span className="px-2 py-1 rounded bg-green-600/20 text-green-400 text-sm">AAST -15%</span>}
-            {(p.discount || aastValid) && (
-              <span className="line-through text-gray-500">{p.discount ? p.price : price} EGP</span>
+            <span className="text-2xl font-bold">{price} EGP</span>
+            {p.discount && (
+              <span className="line-through text-gray-500">{p.price} EGP</span>
             )}
           </div>
           <p className="mt-4 text-gray-600 dark:text-gray-300">{p.description}</p>
@@ -146,7 +135,7 @@ export default function ProductDetails(){
             </div>
           </div>
 
-          {/* Quantity & AAST */}
+          {/* Quantity */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="text-sm mb-2">Quantity</div>
@@ -155,28 +144,6 @@ export default function ProductDetails(){
                 <div className="flex-1 text-center">{qty}</div>
                 <button onClick={()=>setQty(q=> q+1)} className="w-10 h-10 grid place-items-center text-xl">+</button>
               </div>
-            </div>
-            <div>
-              <div className="text-sm mb-2">AAST Student ID</div>
-              <input
-                value={aast}
-                onChange={e=>{
-                  // allow digits only
-                  const digits = (e.target.value||'').replace(/\D/g,'').slice(0,9)
-                  setAast(digits)
-                }}
-                inputMode="numeric"
-                maxLength={9}
-                pattern="^(19|20|21|22|23|24|25)\\d{7}$"
-                placeholder="AAST ID"
-                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-transparent"
-                aria-describedby="aastHelp"
-              />
-              {aast && (
-                <div id="aastHelp" className={`mt-1 text-sm ${aastValid? 'text-green-400':'text-red-400'}`}>
-                  {aastValid? 'Discount applied (-15%)' : 'No discount'}
-                </div>
-              )}
             </div>
           </div>
 
@@ -196,7 +163,7 @@ export default function ProductDetails(){
                   quantity: qty,
                   selectedSize: size || (p.sizes?.[0] || p.sizeOptions?.[0] || 'M'),
                   selectedColor: color || (p.colors?.[0] || p.colorOptions?.[0] || 'Black'),
-                  price: discountedPrice,
+                  price: price,
                   thumbnail: currentImageUrl
                 }
                 dispatch(addToCart(payload))
@@ -215,3 +182,4 @@ export default function ProductDetails(){
     </div>
   )
 }
+

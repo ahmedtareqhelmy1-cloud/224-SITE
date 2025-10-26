@@ -92,7 +92,8 @@ const ProductCard = ({ product }) => {
     });
     
     // Add a default fallback image if no valid images found
-    return candidates.length > 0 ? candidates : ['/assets/Logo.svg'];
+    const base = import.meta.env.BASE_URL || '/';
+    return candidates.length > 0 ? candidates : [`${base}assets/Logo.svg`];
   };
   
   const [displayImage, setDisplayImage] = useState('');
@@ -167,7 +168,8 @@ const ProductCard = ({ product }) => {
                     setDisplayImage(next);
                     setFallbackQueue(restQ);
                   } else {
-                    setDisplayImage('/assets/Logo.svg');
+                    const base = import.meta.env.BASE_URL || '/';
+                    setDisplayImage(`${base}assets/Logo.svg`);
                   }
                 }}
               />

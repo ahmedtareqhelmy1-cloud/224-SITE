@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import Logo from './Logo';
 import ShopMenu from './ShopMenu';
-// We'll load the Clerk user via a small nested component so Navbar can remain safe
-import { SignInButton } from '@clerk/clerk-react';
 import { FaMoon, FaSun, FaShoppingCart, FaInstagram } from 'react-icons/fa';
 
 const isClerkAvailable = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -195,23 +193,7 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-
-            {/* Auth Buttons */}
-            {isClerkAvailable && <ClerkUserLoader />}
-            {authComponents && (
-              <>
-                <authComponents.SignedIn>
-                  <authComponents.UserButton afterSignOutUrl="/" />
-                </authComponents.SignedIn>
-                <authComponents.SignedOut>
-                  <authComponents.SignInButton mode="modal">
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                      Sign in
-                    </button>
-                  </authComponents.SignInButton>
-                </authComponents.SignedOut>
-              </>
-            )}
+            {/* Auth removed from navbar */}
           </div>
         </div>
 

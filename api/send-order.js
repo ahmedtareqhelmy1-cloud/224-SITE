@@ -1,80 +1,110 @@
 import fs from 'fs';
 import path from 'path';
+import emailjs from '@emailjs/nodejs';
+
+const dataPath = path.join(process.cwd(), 'data');
+const ordersFile = path.join(dataPath, 'orders.json');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  const { order, buyerEmail } = req.body || {};
-  if (!order) {
-    res.status(400).json({ error: 'Missing order' });
-    return;
-  }
-
-  const MJ_APIKEY_PUBLIC = process.env.MAILJET_API_KEY;
-  const MJ_APIKEY_PRIVATE = process.env.MAILJET_API_SECRET;
-  const TEMPLATE_ID = Number(process.env.MAILJET_TEMPLATE_ID || 7429596);
-  const SENDER = process.env.MAILJET_SENDER || 'no-reply@your-domain.com';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'mohamedtareq543219@gmail.com';
-
-  if (!MJ_APIKEY_PUBLIC || !MJ_APIKEY_PRIVATE) {
-    res.status(501).json({ error: 'Mailjet keys not configured' });
-    return;
-  }
-
-  // We no longer attach or show a logo in the email; product image only
-  let inlineAttachments = undefined;
-
-  // Derive a product image from the first order item
-  const firstItem = Array.isArray(order?.items) && order.items.length ? order.items[0] : null;
-  const isImage = (v)=> typeof v === 'string' && (/^(https?:\/\/|\/)/.test(v) || /\.(png|jpe?g|webp|svg)$/i.test(v));
-  const arrCandidates = firstItem && Array.isArray(firstItem.images) ? firstItem.images.filter(isImage) : [];
-  const objCandidates = firstItem && firstItem.images && typeof firstItem.images === 'object' && !Array.isArray(firstItem.images)
-    ? Object.values(firstItem.images).filter(isImage)
-    : [];
-  const productImage = [firstItem?.thumbnail, firstItem?.imageUrl, firstItem?.image, ...arrCandidates, ...objCandidates].filter(isImage)[0] || '';
-
-  const payload = {
-    Messages: [
-      {
-        From: { Email: SENDER, Name: 'Order Confirmation' },
-        To: [{ Email: buyerEmail || ADMIN_EMAIL }],
-        Cc: [{ Email: ADMIN_EMAIL }],
-        TemplateID: TEMPLATE_ID,
-        TemplateLanguage: true,
-        Variables: {
-          ...(order || {}),
-          logo_url: '',
-          product_image: productImage
-        },
-        ...(inlineAttachments ? { InlineAttachments: inlineAttachments } : {})
-      }
-    ]
-  };
 
   try {
-    const auth = Buffer.from(`${MJ_APIKEY_PUBLIC}:${MJ_APIKEY_PRIVATE}`).toString('base64');
-    const r = await fetch('https://api.mailjet.com/v3.1/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await r.json();
-    if (!r.ok) {
-      console.error('Mailjet error', data);
-      res.status(r.status).json({ error: 'Mailjet send failed', details: data });
-      return;
+    const { order, buyerEmail } = req.body;
+    if (!order) {
+      return res.status(400).json({ error: 'Missing order data' });
     }
 
-    res.status(200).json({ ok: true, data });
-  } catch (e) {
-    console.error('Mailjet request failed', e);
-    res.status(500).json({ error: 'Server error', details: String(e) });
+    // Ensure data directory exists
+    if (!fs.existsSync(dataPath)) {
+      fs.mkdirSync(dataPath, { recursive: true });
+    }
+
+    // Function to get full URL for an image path
+    const getFullImageUrl = (imgPath) => {
+      if (!imgPath) return 'https://via.placeholder.com/64';
+      if (imgPath.startsWith('http')) return imgPath;
+      const base = process.env.NEXT_PUBLIC_BASE_URL || `http://${req.headers.host}`;
+      return `${base}${imgPath.startsWith('/') ? '' : '/'}${imgPath}`;
+    };
+
+    // Process order items with proper image URLs
+    const processOrderItems = (items = []) => {
+      return items.map(item => {
+        // Get the first available image from the item
+        const itemImage = [item.thumbnail, item.imageUrl, item.image, ...(item.images || [])]
+          .filter(Boolean)
+          .find(img => typeof img === 'string' && img.trim() !== '');
+        
+        return {
+          name: item.name || 'Product',
+          units: item.quantity || 1,
+          price: (item.price || 0).toFixed(2),
+          image_url: getFullImageUrl(itemImage)
+        };
+      });
+    };
+
+    // Calculate costs
+    const subtotal = order.subtotal || (order.items || []).reduce((sum, item) => {
+      return sum + ((item.price || 0) * (item.quantity || 1));
+    }, 0);
+    
+    const tax = order.tax || 0;
+    const shipping = order.shippingCost || 0;
+    const total = order.total || (subtotal + tax + shipping);
+
+    // Prepare email template parameters
+    const templateParams = {
+      email: buyerEmail || 'customer@example.com',
+      order_id: order.id || `#${Math.floor(10000 + Math.random() * 90000)}`,
+      orders: processOrderItems(order.items),
+      cost: {
+        shipping: shipping.toFixed(2),
+        tax: tax.toFixed(2),
+        total: total.toFixed(2)
+      }
+    };
+
+    // Save order to file (optional)
+    const orders = fs.existsSync(ordersFile) 
+      ? JSON.parse(fs.readFileSync(ordersFile, 'utf8')) 
+      : [];
+    
+    orders.push({
+      ...order,
+      id: templateParams.order_id,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    });
+    
+    fs.writeFileSync(ordersFile, JSON.stringify(orders, null, 2));
+
+    // Send email using EmailJS
+    const result = await emailjs.send(
+      process.env.EMAILJS_SERVICE_ID,
+      process.env.VITE_EMAILJS_TEMPLATE_ORDER,
+      templateParams,
+      {
+        publicKey: process.env.EMAILJS_PUBLIC_KEY,
+        privateKey: process.env.EMAILJS_PRIVATE_KEY,
+      }
+    );
+
+    return res.status(200).json({ 
+      ok: true, 
+      data: result,
+      message: 'Order confirmation email sent successfully',
+      orderId: templateParams.order_id
+    });
+
+  } catch (error) {
+    console.error('Order processing failed:', error);
+    return res.status(500).json({ 
+      ok: false,
+      error: 'Failed to process order',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }

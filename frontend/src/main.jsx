@@ -53,7 +53,7 @@ createRoot(document.getElementById('root')).render(
           </div>
         }>
           <ClerkProviderComponent>
-            <BrowserRouter>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
               <ToastProvider>
                 <App />
               </ToastProvider>

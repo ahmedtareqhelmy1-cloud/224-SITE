@@ -38,7 +38,7 @@ export const Home = () => {
       >
         {/* Bold background: moving fabric + animated brand mark */}
         <ParallaxLayer speed={0.06} strength={140}>
-          <video src="/videos/hero-fabric.mp4" autoPlay muted loop className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          <video src={`${import.meta.env.BASE_URL || '/'}videos/hero-fabric.mp4`} autoPlay muted loop className="absolute inset-0 w-full h-full object-cover opacity-60" />
         </ParallaxLayer>
         {/* Living circular stage + brand mark (animated) */}
         <ParallaxLayer speed={-0.02} strength={60}>
