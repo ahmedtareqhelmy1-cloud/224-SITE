@@ -26,25 +26,24 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'cavee2/frontend/package-lock.json'
 
       - name: Install dependencies
-        working-directory: cavee2/frontend
+        working-directory: frontend
         run: npm ci
 
       - name: Build
-        working-directory: cavee2/frontend
+        working-directory: frontend
         run: npm run build
 
       - name: SPA fallback (copy index.html to 404.html)
-        working-directory: cavee2/frontend
+        working-directory: frontend
         run: |
           cp dist/index.html dist/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: cavee2/frontend/dist
+          path: frontend/dist
 
   deploy:
     environment:
