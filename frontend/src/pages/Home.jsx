@@ -6,6 +6,8 @@ import ProductCard from '../components/products/ProductCard';
 import ScrollReveal from '../components/animations/ScrollReveal';
 import ParallaxLayer from '../components/animations/ParallaxLayer';
 import LogoMark from '../assets/products/file.svg';
+import CinematicHero from '../components/hero/CinematicHero';
+import MarqueeBand from '../components/sections/MarqueeBand';
 
 export const Home = () => {
   const products = useSelector(state => state.products.items);
@@ -31,74 +33,9 @@ export const Home = () => {
       animate="visible"
       className="min-h-screen"
     >
-      {/* Hero Section */}
-      <motion.section 
-        className="relative h-[80vh] bg-black overflow-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
-      >
-        {/* Bold background: moving fabric + animated brand mark */}
-        <ParallaxLayer speed={0.06} strength={140}>
-          <video src={`${import.meta.env.BASE_URL || '/'}videos/hero-fabric.mp4`} autoPlay muted loop className="absolute inset-0 w-full h-full object-cover opacity-60" />
-        </ParallaxLayer>
-        {/* Living circular stage + brand mark (animated) */}
-        <ParallaxLayer speed={-0.02} strength={60}>
-          {/* Pulsing circular stage */}
-          <motion.div
-            className="pointer-events-none select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{
-              width: '72vw', height: '72vw',
-              background: 'radial-gradient(closest-side, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 60%, transparent 70%)',
-              boxShadow: '0 0 140px rgba(255,255,255,0.06) inset, 0 0 160px rgba(0,0,0,0.5) inset'
-            }}
-            initial={{ scale: 0.96, opacity: 0 }}
-            animate={{
-              scale: [0.96, 1.02, 0.98, 1],
-              opacity: [0.14, 0.2, 0.16, 0.18]
-            }}
-            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        </ParallaxLayer>
-        {/* Brand mark floating within the stage */}
-        <ParallaxLayer speed={-0.01} strength={40}>
-          <motion.img
-            src={LogoMark}
-            alt="brand-bg"
-            className="pointer-events-none select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[58vw] md:w-[42vw]"
-            style={{ WebkitUserDrag:'none', filter: 'brightness(0) invert(1) drop-shadow(0 0 24px rgba(255,255,255,0.10))' }}
-            initial={{ scale: 0.95, rotate: -1.2, y: 0, opacity: 0 }}
-            animate={{
-              scale: 1,
-              rotate: [-1.2, 1.2, -1.2],
-              y: [-8, 6, -8],
-              opacity: [0.14, 0.22, 0.18]
-            }}
-            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        </ParallaxLayer>
-        <ParallaxLayer speed={-0.05} strength={90}>
-          <div className="absolute inset-0 bg-black/25" />
-        </ParallaxLayer>
-        <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
-          <div className="text-white max-w-3xl">
-            <ScrollReveal as="div" direction="left">
-              <HeroTitle />
-            </ScrollReveal>
-            {/* Subline stays on top of animated background */}
-            <ScrollReveal as="p" direction="right" delay={0.08} className="text-lg md:text-xl mb-8 text-gray-200/80">
-              Designed Beyond Reality — premium streetwear crafted with care.
-            </ScrollReveal>
-            <ScrollReveal as="div" direction="up" delay={0.16}>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/shop" className="inline-block bg-white text-black px-8 py-3 rounded-full text-lg font-medium hover:scale-105 transition-transform">
-                  Shop Now
-                </Link>
-              </motion.div>
-            </ScrollReveal>
-          </div>
-        </div>
-      </motion.section>
+      {/* Cinematic hero + marquee band */}
+      <CinematicHero />
+      <MarqueeBand />
 
       {/* T-Shirts Section */}
       <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
