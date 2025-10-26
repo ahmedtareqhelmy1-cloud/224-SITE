@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Base path for GitHub Pages project site: https://ahmedtareqhelmy1-cloud.github.io/224SITE/
-  base: '/224SITE/',
+  // Base path for GitHub Pages project site: https://ahmedtareqhelmy1-cloud.github.io/224-SITE/
+  base: '/224-SITE/',
   css: {
     postcss: './postcss.config.js'
   },
