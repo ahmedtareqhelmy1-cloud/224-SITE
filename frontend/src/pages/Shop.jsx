@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchProducts, setFilters, clearFilters } from '../features/products/productsSlice';
 import ProductCard from '../components/products/ProductCard';
+import { sampleProducts } from '../data/sampleProducts';
 import MultiStepForm from '../components/forms/MultiStepForm';
 import { AddProductForm } from '../components/admin/AddProductForm';
 
@@ -67,6 +68,7 @@ const Shop = () => {
 
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
   const userEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || null;
+  const isAdmin = !!userEmail && (!!ADMIN_EMAIL ? userEmail === ADMIN_EMAIL : false);
 
   // Add Product form state
   const [newProd, setNewProd] = useState({
@@ -80,6 +82,7 @@ const Shop = () => {
     image: null
   });
   const [adding, setAdding] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [addMessage, setAddMessage] = useState('');
 
   const [activeFilters, setActiveFilters] = useState({
@@ -93,6 +96,42 @@ const Shop = () => {
     console.log('Custom order submitted:', formData);
     setIsCustomOrderModalOpen(false);
     // Show success toast or notification
+  };
+
+  // Admin: Seed sample products into Firestore
+  const handleSeedProducts = async () => {
+    if (!isAdmin) return;
+    try {
+      setSeeding(true);
+      const { firebaseFunctions } = await import('../config/firebase');
+      let created = 0;
+      for (const sp of sampleProducts) {
+        try {
+          await firebaseFunctions.adminCreateProduct({
+            name: sp.name,
+            description: sp.description,
+            price: Number(sp.price),
+            category: sp.category,
+            stock: Number(sp.stock),
+            inStock: sp.inStock,
+            sizes: sp.sizes,
+            colors: sp.colors,
+            images: sp.images
+          });
+          created += 1;
+        } catch (e) {
+          console.error('Seed item failed', sp.name, e);
+        }
+      }
+      // Refresh products list
+      dispatch(fetchProducts());
+      alert(`Seeded ${created} products.`);
+    } catch (err) {
+      console.error('Seed failed', err);
+      alert('Seeding failed');
+    } finally {
+      setSeeding(false);
+    }
   };
 
   // Load initial products
@@ -258,6 +297,17 @@ const Shop = () => {
             </div>
           </div>
         </div>
+
+        {/* Admin quick actions */}
+        {isAdmin && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              onClick={handleSeedProducts}
+              disabled={seeding}
+              className="bg-black text-white px-4 py-2 rounded-lg disabled:opacity-60"
+            >{seeding ? 'Seeding…' : 'Seed Sample Products'}</button>
+          </div>
+        )}
 
         {/* Products Grid */}
         {loading ? (
