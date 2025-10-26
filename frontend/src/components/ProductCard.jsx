@@ -2,31 +2,52 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
-export default function ProductCard({p}){
+export default function ProductCard({ p }) {
+  const isImage = (v) => typeof v === 'string' && (/^(https?:\/\/|\/)\s*/.test(v) || /(png|jpe?g|webp|svg)$/i.test(v));
+  const arrCandidates = Array.isArray(p.images) ? p.images.filter(isImage) : [];
+  const objCandidates = (p.images && typeof p.images === 'object') ? Object.values(p.images).filter(isImage) : [];
+  const base = import.meta.env.BASE_URL || '/';
+  const candidates = [p.thumbnail, p.image, ...arrCandidates, ...objCandidates].filter(isImage);
+  const src = candidates[0] || `${base}assets/Logo.svg`;
+
   return (
     <motion.div
-      className="product-card relative group"
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -6, scale: 1.015 }}
       whileTap={{ scale: 0.995 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+      className="card border-0 shadow-sm overflow-hidden h-100"
     >
-      <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition duration-500" style={{
-        boxShadow: '0 0 40px rgba(123,44,255,0.12), 0 0 80px rgba(59,130,246,0.08)'
-      }} />
-      <div className="card-media">
-        <img src={p.image} alt={p.name} />
-        {p.isSoldOut && <div className="sold-out">SOLD OUT</div>}
+      <div className="position-relative">
+        <div className="ratio ratio-1x1 bg-body-tertiary">
+          <img
+            src={src}
+            alt={p.name || 'Product'}
+            className="w-100 h-100 object-fit-cover"
+            onError={(e)=>{ e.currentTarget.src = `${base}assets/Logo.svg`; }}
+          />
+        </div>
+        {p.isSoldOut && (
+          <span className="badge text-bg-dark position-absolute top-0 start-0 m-2 rounded-pill">Sold Out</span>
+        )}
+        {p.isOnSale && (
+          <span className="badge text-bg-danger position-absolute top-0 end-0 m-2 rounded-pill">Sale</span>
+        )}
       </div>
-      <div className="card-body">
-        <h5>{p.name}</h5>
-        <p className="muted">{p.description}</p>
-        <div className="d-flex align-items-center justify-content-between mt-3">
-          <div className="price">
-            {p.isOnSale ? (<><span className="badge-sale">SALE</span> <del>{p.price}</del> <strong className="ms-2">{p.salePrice} EGP</strong></>) : (<strong>{p.price} EGP</strong>)}
+      <div className="card-body d-flex flex-column">
+        <h6 className="fw-bold mb-1 text-truncate" title={p.name}>{p.name}</h6>
+        {p.description && <p className="text-secondary small mb-2" style={{minHeight: '2.25rem'}}>{p.description}</p>}
+        <div className="mt-auto d-flex align-items-center justify-content-between">
+          <div className="text-nowrap">
+            {p.isOnSale ? (
+              <>
+                <span className="text-secondary small me-1"><del>{Number(p.price).toLocaleString()} EGP</del></span>
+                <strong>{Number(p.salePrice).toLocaleString()} EGP</strong>
+              </>
+            ) : (
+              <strong>{Number(p.price).toLocaleString()} EGP</strong>
+            )}
           </div>
-          <div>
-            <Link to={`/product/${p.id}`} className="btn btn-sm btn-outline-light">Details</Link>
-          </div>
+          <Link to={`/product/${p.id}`} className="btn btn-sm btn-dark">Details</Link>
         </div>
       </div>
     </motion.div>

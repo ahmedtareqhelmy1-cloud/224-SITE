@@ -11,6 +11,7 @@ export default function ProductDetails(){
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
   const [qty, setQty] = useState(1)
+  const [tab, setTab] = useState('details')
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const PAYMOB_URL = import.meta.env.VITE_PAYMOB_CHECKOUT_URL || 'https://paymob.xyz/cpG3CeBs/'
@@ -84,7 +85,7 @@ export default function ProductDetails(){
                 animate={{opacity:1}}
                 exit={{opacity:0}}
                 transition={{duration:0.25}}
-                onError={(e)=>{ e.target.src = 'https://via.placeholder.com/600x600?text=Image' }}
+                onError={(e)=>{ const base = import.meta.env.BASE_URL || '/'; e.currentTarget.src = `${base}assets/Logo.svg`; }}
               />
             </AnimatePresence>
             {p.isSoldOut && <div className="absolute top-3 left-3 bg-black text-white px-3 py-1 rounded">SOLD OUT</div>}
@@ -176,6 +177,35 @@ export default function ProductDetails(){
               className="px-5 py-3 rounded-lg bg-pink-600 text-white hover:bg-pink-700"
               onClick={handleBuyNow}
             >Buy it now</motion.button>
+          </div>
+
+          {/* Info Tabs */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 border-b border-white/10">
+              <button className={`pb-2 text-sm ${tab==='details'?'text-white border-b-2 border-white':'text-white/60 hover:text-white'}`} onClick={()=>setTab('details')}>Details</button>
+              <button className={`pb-2 text-sm ${tab==='shipping'?'text-white border-b-2 border-white':'text-white/60 hover:text-white'}`} onClick={()=>setTab('shipping')}>Shipping</button>
+              <button className={`pb-2 text-sm ${tab==='returns'?'text-white border-b-2 border-white':'text-white/60 hover:text-white'}`} onClick={()=>setTab('returns')}>Returns</button>
+            </div>
+            {tab==='details' && (
+              <div className="pt-4 text-white/80 text-sm leading-relaxed">
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Premium fabric blend with soft hand feel</li>
+                  <li>Tailored silhouette for everyday comfort</li>
+                  <li>Care: cold wash, inside out, hang dry</li>
+                </ul>
+              </div>
+            )}
+            {tab==='shipping' && (
+              <div className="pt-4 text-white/80 text-sm">
+                Free shipping on orders over <strong>2999 EGP</strong>.
+                Standard shipping fee is 50 EGP below the threshold.
+              </div>
+            )}
+            {tab==='returns' && (
+              <div className="pt-4 text-white/80 text-sm">
+                We offer a <strong>14-day return</strong> policy for unused items in original packaging. Contact support via the Contact page to start a return.
+              </div>
+            )}
           </div>
         </div>
       </div>

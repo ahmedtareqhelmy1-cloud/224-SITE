@@ -12,6 +12,9 @@ import CustomDesign from '../pages/CustomDesign';
 import Contact from '../pages/Contact';
 import Offers from '../pages/Offers';
 import DynamicPage from '../pages/DynamicPage';
+import Lookbook from '../pages/Lookbook';
+import Collections from '../pages/Collections';
+import OurStory from '../pages/OurStory';
 import Tshirts from '../pages/shop/Tshirts';
 import Pants from '../pages/shop/Pants';
 import Accessories from '../pages/shop/Accessories';
@@ -63,6 +66,9 @@ export const AppRoutes = React.memo(({ isAdmin }) => {
         {/* Guest checkout enabled: removed auth gate */}
         <Route path="/checkout" element={<PageTransition><Checkout /></PageTransition>} />
         <Route path="/profile" element={<PrivateRoute><PageTransition><Profile /></PageTransition></PrivateRoute>} />
+        <Route path="/lookbook" element={<PageTransition><Lookbook /></PageTransition>} />
+        <Route path="/collections" element={<PageTransition><Collections /></PageTransition>} />
+        <Route path="/story" element={<PageTransition><OurStory /></PageTransition>} />
         <Route path="/admin/*" element={<AdminRoute isAdmin={isAdmin}><PageTransition><AdminPanel /></PageTransition></AdminRoute>} />
         <Route path="/custom-design" element={<PageTransition><CustomDesign /></PageTransition>} />
         <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />

@@ -11,6 +11,8 @@ export const Home = () => {
   const products = useSelector(state => state.products.items);
   const tshirts = products.filter(p=> (p.category||'').includes('tshirt')).slice(0,8);
   const pants = products.filter(p=> (p.category||'').includes('pant')).slice(0,8);
+  const featured = (products || []).slice(0,8);
+  const trending = (products || []).filter(p=> p.salePrice || p.discount || p.isOnSale).slice(0,8);
 
   // Animation variants
   const containerVariants = {
@@ -109,6 +111,17 @@ export const Home = () => {
         </motion.div>
       </section>
 
+      {/* Featured Section */}
+      <section className="py-4 px-4 md:px-8 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <ScrollReveal as="h2" direction="up" className="text-3xl font-bold text-gray-900 dark:text-white">Featured</ScrollReveal>
+          <Link to="/shop" className="text-blue-600 dark:text-blue-400 hover:underline">Shop All</Link>
+        </div>
+        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {featured.map(product => (<ProductCard key={product.id} product={product} />))}
+        </motion.div>
+      </section>
+
       {/* Pants Section */}
       <section className="py-4 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
@@ -119,6 +132,19 @@ export const Home = () => {
           {pants.map(product => (<ProductCard key={product.id} product={product} />))}
         </motion.div>
       </section>
+
+      {/* Trending Section */}
+      {!!trending.length && (
+        <section className="py-4 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <ScrollReveal as="h2" direction="up" className="text-3xl font-bold text-gray-900 dark:text-white">Trending Now</ScrollReveal>
+            <Link to="/offers" className="text-blue-600 dark:text-blue-400 hover:underline">View Offers</Link>
+          </div>
+          <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {trending.map(product => (<ProductCard key={product.id} product={product} />))}
+          </motion.div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="bg-gray-100 dark:bg-gray-900 py-16">

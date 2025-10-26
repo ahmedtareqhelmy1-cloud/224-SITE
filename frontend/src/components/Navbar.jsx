@@ -65,6 +65,9 @@ export default function Navbar() {
   const navLinks = [
     { to: '/', label: 'Home' },
     { type: 'shop-menu' },
+    { to: '/lookbook', label: 'Lookbook' },
+    { to: '/collections', label: 'Collections' },
+    { to: '/story', label: 'Our Story' },
     { to: '/contact', label: 'Contact' }
   ];
 
