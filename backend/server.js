@@ -5,10 +5,33 @@ const { v4: uuidv4 } = require('uuid')
 const fs = require('fs')
 const path = require('path')
 const emailjs = require('@emailjs/nodejs')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 require('dotenv').config()
 
 const app = express()
-app.use(cors())
+// Security headers
+app.use(helmet())
+
+// CORS allowlist from env (comma-separated). If not set, default to permissive for development.
+const rawOrigins = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || ''
+const originAllowlist = String(rawOrigins).split(',').map(s => s.trim()).filter(Boolean)
+const corsOptions = originAllowlist.length
+  ? { origin: (origin, cb) => {
+      if (!origin || originAllowlist.includes(origin)) return cb(null, true)
+      return cb(new Error('Not allowed by CORS'))
+    }, credentials: true }
+  : { origin: true, credentials: true }
+app.use(cors(corsOptions))
+
+// Basic rate limiting to protect from bursts (customize via env)
+const limiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  limit: Number(process.env.RATE_LIMIT_MAX || 300),
+  standardHeaders: true,
+  legacyHeaders: false
+})
+app.use(limiter)
 app.use(morgan('dev'))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
@@ -174,11 +197,11 @@ app.post('/api/send-order', async (req, res) => {
 
     // Send email using EmailJS
     const result = await emailjs.send(
-      process.env.EMAILJS_SERVICE_ID,
-      process.env.VITE_EMAILJS_TEMPLATE_ORDER,
+      process.env.EMAILJS_SERVICE_ID || process.env.VITE_EMAILJS_SERVICE_ID,
+      process.env.VITE_EMAILJS_TEMPLATE_ORDER || process.env.EMAILJS_TEMPLATE_ID,
       templateParams,
       {
-        publicKey: process.env.EMAILJS_PUBLIC_KEY,
+        publicKey: process.env.EMAILJS_PUBLIC_KEY || process.env.VITE_EMAILJS_PUBLIC_KEY,
         privateKey: process.env.EMAILJS_PRIVATE_KEY,
       }
     )
@@ -201,6 +224,18 @@ app.post('/api/paymob',(req,res)=>{
   res.json({ok:true,paymob_token:'tok_fake_12345',integration_id:process.env.PAYMOB_INTEGRATION_ID || null})
 })
 
+// 404 handler for unmatched routes
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: 'Not Found' })
+})
+
 const argPort = parseInt(process.argv[2], 10)
 const PORT = argPort || process.env.PORT || 4000
-app.listen(PORT, ()=>console.log('Backend running on', PORT))
+
+// Export app for testing
+module.exports = app
+
+// Only start server when run directly (not during tests)
+if (require.main === module) {
+  app.listen(PORT, () => console.log('Backend running on', PORT))
+}
