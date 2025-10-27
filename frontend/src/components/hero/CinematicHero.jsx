@@ -40,7 +40,7 @@ export default function CinematicHero(){
               className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(255,255,255,0.08)]"
             >
               <div className="aspect-[4/5] bg-gradient-to-br from-zinc-900 to-black">
-                <img src="https://images.unsplash.com/photo-1503342217505-b0a15cf70489?w=1600" alt="Hero" className="w-full h-full object-cover mix-blend-lighten" />
+                <img src={`https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1600&q=80&v=${Math.floor(Math.random() * 1000)}`} alt="Hero" className="w-full h-full object-cover mix-blend-lighten" />
               </div>
               <div className="absolute inset-0 pointer-events-none" style={{background:'linear-gradient(to top, rgba(0,0,0,0.6), transparent 40%)'}} />
             </motion.div>
