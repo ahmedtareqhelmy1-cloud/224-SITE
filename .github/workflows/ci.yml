@@ -19,7 +19,9 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: cavee2/backend/package-lock.json
+          cache-dependency-path: |
+            cavee2/backend/package-lock.json
+            **/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm test
@@ -37,7 +39,9 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: cavee2/frontend/package-lock.json
+          cache-dependency-path: |
+            cavee2/frontend/package-lock.json
+            **/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm test
